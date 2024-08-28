@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Any, Optional, Union, List
 
 from curl_cffi.requests import AsyncSession, Session, Response

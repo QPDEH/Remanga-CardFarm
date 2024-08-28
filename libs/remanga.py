@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import os.path
 
-from asyncio import set_event_loop_policy
-from asyncio import WindowsSelectorEventLoopPolicy
+# from asyncio import set_event_loop_policy
+# from asyncio import WindowsSelectorEventLoopPolicy
 
 from curl_cffi.requests import Session
 from curl_cffi.requests import Response
@@ -19,6 +21,7 @@ class ReManga:
     BASE_PATHS: dict = {
         'login': '/users/login/',
         'views': '/activity/views/',
+        'votes': '/activity/votes/',
         'inventory': '/inventory/{}',
         'catalog': '/search/catalog',
         'chapters': '/titles/chapters',
@@ -37,7 +40,7 @@ class ReManga:
     DATA_DIR = 'data'
     CACHE_PATH = 'data/{}_cache.json'
 
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    # set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
     def __init__(self,
                  username: str = None,
@@ -51,7 +54,7 @@ class ReManga:
         self.auto_craft = auto_craft
 
         self.headers: dict = {
-            'user-agent': 'okhttp',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0',
             'refer': self.SITE_URL,
             "content-type": "application/json",
             "origin": self.SITE_URL,
@@ -73,6 +76,7 @@ class ReManga:
         self.__load_cache() or self.__login(self.username, self.password, self.token)
         self.__update_manga_page_path()
         logger.success(f'<{self.username or self.user_info["username"]}: Successful login>')
+        
 
     def __login(self,
                 username: str = None,
@@ -287,6 +291,20 @@ class ReManga:
             logger.info(text)
             self.viewed_chapters.append(chapter_i[0])
 
+        async def vote_chapter(chapter_i: tuple, m_dir: dict) -> None:
+            url = self.BASE_URL + self.BASE_PATHS.get('votes')
+            payload = {"chapter": int(chapter_i[0]), "type": 0}
+            await self.async_session.req("POST", url=url,
+                                         headers=self.headers,
+                                         data=payload)
+            text = (f'<{self.username or self.user_info.get("username")}'
+                    f'Voted: Manga: {m_dir.get("name")}, Chapter: {chapter_i[1]}')
+            logger.info(text)
+
+        async def do_some_stuff(chapter_i: tuple, m_dir: dict) -> None:
+            asyncio.ensure_future(view_chapter(chapter_i, m_dir))
+            asyncio.ensure_future(vote_chapter(chapter_i, m_dir))
+
         async def get_manga_branch(m_dir: dict) -> None:
             url = self.SITE_URL + self.SITE_PATHS.get('manga_page').format(m_dir.get('dir'))
             querystring = {
@@ -330,7 +348,7 @@ class ReManga:
                             continue
                     if chapter.get('id') not in self.viewed_chapters:
                         chapters.append((chapter.get('id'), chapter.get('chapter')))
-                await asyncio.gather(*[view_chapter(chapter, m_dir) for chapter in chapters])
+                await asyncio.gather(*[do_some_stuff(chapter, m_dir) for chapter in chapters])
                 # return chapters
 
         tasks = []
@@ -375,5 +393,5 @@ class ReManga:
             await self.__farm_view()
             await self.__save_viewed()
             await self.auto_craft_cards() if self.auto_craft else None
-            logger.success(f'<{self.username or self.user_info.get("username")}: TIMEBREAK 20 SEC>')
-            await asyncio.sleep(20)
+            logger.success(f'<{self.username or self.user_info.get("username")}: TIMEBREAK 5 SEC>')
+            await asyncio.sleep(5)
