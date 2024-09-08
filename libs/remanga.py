@@ -298,11 +298,12 @@ class ReManga:
                                          headers=self.headers,
                                          data=payload)
             text = (f'<{self.username or self.user_info.get("username")}'
-                    f'Voted: Manga: {m_dir.get("name")}, Chapter: {chapter_i[1]}')
+                    f' Voted: Manga: {m_dir.get("name")}, Chapter: {chapter_i[1]}')
             logger.info(text)
 
         async def do_some_stuff(chapter_i: tuple, m_dir: dict) -> None:
-            asyncio.ensure_future(view_chapter(chapter_i, m_dir))
+            if not chapter_i[2]:
+                asyncio.ensure_future(view_chapter(chapter_i, m_dir))
             asyncio.ensure_future(vote_chapter(chapter_i, m_dir))
 
         async def get_manga_branch(m_dir: dict) -> None:
@@ -338,8 +339,6 @@ class ReManga:
             if response:
                 chapters = []
                 for chapter in response.json().get('content', [])[::-1]:
-                    if chapter.get('is_paid') is True:
-                        continue
                     try:
                         if float(chapter.get('chapter', 0)) < viewed_chapter:
                             continue
@@ -347,7 +346,7 @@ class ReManga:
                         if float(chapter.get('chapter').replace('-', '.').split('.')[0]) < viewed_chapter:
                             continue
                     if chapter.get('id') not in self.viewed_chapters:
-                        chapters.append((chapter.get('id'), chapter.get('chapter')))
+                        chapters.append((chapter.get('id'), chapter.get('chapter'), chapter.get('is_paid') is True))
                 await asyncio.gather(*[do_some_stuff(chapter, m_dir) for chapter in chapters])
                 # return chapters
 
