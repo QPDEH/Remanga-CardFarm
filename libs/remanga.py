@@ -388,7 +388,7 @@ class ReManga:
         await self.get_user_bookmarks_for_ignore()
         while True:
             self.page += 1
-            await self.get_catalog()
+            await self.get_catalog("-count_chapters")
             await self.__farm_view()
             await self.__save_viewed()
             await self.auto_craft_cards() if self.auto_craft else None
